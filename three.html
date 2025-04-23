@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice Table Builder111</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            box-sizing: border-box;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: antiquewhite;
+        }
+
+
+
+        .CONTAINER {
+            display: flex;
+            flex-direction: row;
+            border: 2px solid black;
+            margin-top: 2%;
+            overflow: hidden;
+            width: 80%;
+            height: 90vh;
+            background-color: darkgrey;
+        }
+
+
+        .left {
+            width: 60%;
+            height: 100%;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .right {
+            width: 40%;
+            height: 100%;
+            background: #f8f8f8;
+            border-left: 2px solid #ddd;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            font-size: 33px;
+        }
+
+        .controls button {
+            font-size: 30px;
+        }
+
+        .controls input {
+            font-size: 30px;
+        }
+
+
+        .right h3 {
+            font-size: 30px;
+            margin: 0 0 10px 0;
+        }
+
+        input,
+        button {
+            padding: 10px 14px;
+            margin: 5px 5px 10px 0;
+            font-size: 1rem;
+        }
+
+        .table-wrapper {
+            margin-bottom: 25px;
+            border: 2px dashed #bbb;
+            padding: 15px;
+            background: #fafafa;
+        }
+
+        table {
+            border-collapse: collapse;
+            user-select: none;
+            margin-bottom: 10px;
+        }
+
+        td {
+            border: 1px solid #444;
+            padding: 14px;
+            min-width: 80px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+
+        td.selected {
+            background-color: #cde5ff;
+            font-size: 34px;
+        }
+
+        .output {
+            white-space: pre;
+            font-family: monospace;
+            /* font-size: 14px; */
+            font-size: 25px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="CONTAINER">
+        <div class="left">
+            <h2 style="    font-size: 35px;">🧾 Invoice Table Builder</h2>
+
+            <div class="controls">
+                <label>Rows:</label>
+                <input type="number" id="rows" value="3" min="1">
+                <label>Cols:</label>
+                <input type="number" id="cols" value="3" min="1">
+                <button onclick="createTable()">➕ Generate Table</button>
+                <button onclick="applyRowSpan()">↕️ Row Span</button>
+                <button onclick="applyColSpan()">↔️ Col Span</button>
+                <button onclick="generateAllHTML()">🧾 Generate HTML</button>
+                <button onclick="copyHTML()">📋 Copy HTML</button>
+            </div>
+
+            <div id="tables-container"></div>
+        </div>
+
+        <div class="right">
+            <h3>🔤 Generated HTML</h3>
+            <div class="output" id="html-output"></div>
+        </div>
+    </div>
+    <script>
+        let selectedCells = [];
+
+        function createTable() {
+            const rowCount = parseInt(document.getElementById("rows").value);
+            const colCount = parseInt(document.getElementById("cols").value);
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "table-wrapper";
+
+            const table = document.createElement("table");
+            table.onmousedown = (e) => {
+                clearSelection();
+                if (e.target.tagName === "TD") {
+                    selectedCells = [e.target];
+                    e.target.classList.add("selected");
+                    table.onmouseover = (ev) => {
+                        if (ev.buttons && ev.target.tagName === "TD" && !selectedCells.includes(ev.target)) {
+                            selectedCells.push(ev.target);
+                            ev.target.classList.add("selected");
+                        }
+                    };
+                }
+            };
+            table.onmouseup = () => {
+                table.onmouseover = null;
+            };
+
+            for (let r = 0; r < rowCount; r++) {
+                const row = document.createElement("tr");
+                for (let c = 0; c < colCount; c++) {
+                    const cell = document.createElement("td");
+                    cell.contentEditable = true;
+                    // cell.cont = true;
+                    cell.innerText = ""; // No default content
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            }
+
+            wrapper.appendChild(table);
+            document.getElementById("tables-container").appendChild(wrapper);
+        }
+
+        function clearSelection() {
+            document.querySelectorAll("td").forEach(td => td.classList.remove("selected"));
+            selectedCells = [];
+        }
+
+        function applyRowSpan() {
+            if (selectedCells.length < 2) return alert("Select multiple cells in the same column");
+
+            const groupedByCol = selectedCells.reduce((acc, cell) => {
+                const colIndex = cell.cellIndex;
+                if (!acc[colIndex]) acc[colIndex] = [];
+                acc[colIndex].push(cell);
+                return acc;
+            }, {});
+
+            Object.values(groupedByCol).forEach(group => {
+                if (group.length > 1) {
+                    const first = group[0];
+                    first.rowSpan = group.length;
+                    for (let i = 1; i < group.length; i++) {
+                        group[i].remove();
+                    }
+                }
+            });
+
+            clearSelection();
+        }
+
+        function applyColSpan() {
+            if (selectedCells.length < 2) return alert("Select multiple cells in the same row");
+
+            const groupedByRow = selectedCells.reduce((acc, cell) => {
+                const rowIndex = cell.parentElement.rowIndex;
+                if (!acc[rowIndex]) acc[rowIndex] = [];
+                acc[rowIndex].push(cell);
+                return acc;
+            }, {});
+
+            Object.values(groupedByRow).forEach(group => {
+                if (group.length > 1) {
+                    const first = group[0];
+                    first.colSpan = group.length;
+                    for (let i = 1; i < group.length; i++) {
+                        group[i].remove();
+                    }
+                }
+            });
+
+            clearSelection();
+        }
+
+
+
+
+        // function generateAllHTML() {
+        //     const tables = document.querySelectorAll(".table-wrapper table");
+        //     let result = "";
+
+        //     const defaultStyle = `<style>
+        //         table, td, tr {
+        //         border: 2px solid black;
+        //         border-collapse: collapse;
+        //         }
+        //     </style>\n\n`;
+
+        //     tables.forEach(table => {
+        //         const clone = table.cloneNode(true);
+        //         // clone.querySelectorAll("td").forEach(td => td.removeAttribute("class"));
+        //         clone.querySelectorAll("td").forEach(td => {
+        //         td.removeAttribute("class");
+        //         td.removeAttribute("contenteditable"); 
+        //         });
+
+        //         result += `${formatHTML(clone.outerHTML)}\n\n`;
+        //     });
+
+        //     document.getElementById("html-output").innerText = (defaultStyle + result).trim();
+        // }
+
+        function generateAllHTML() {
+            const tables = document.querySelectorAll(".table-wrapper table");
+            let result = "";
+
+            const defaultStyle = `<style>
+table, td, tr {
+border: 2px solid black;
+border-collapse: collapse;
+}
+</style>\n\n`;
+
+            tables.forEach(table => {
+                const clone = table.cloneNode(true);
+                clone.querySelectorAll("td").forEach(td => {
+                    td.removeAttribute("class");
+                    td.removeAttribute("contenteditable"); 
+                });
+                result += `${formatHTML(clone.outerHTML)}\n\n`;
+            });
+
+            document.getElementById("html-output").innerText = (defaultStyle + result).trim();
+        }
+
+
+        function formatHTML(html) {
+            return html
+                .replace(/></g, '>\n<')
+                .replace(/<tr>/g, '  <tr>')
+                .replace(/<td/g, '    <td')
+                .replace(/<\/tr>/g, '  </tr>')
+                .replace(/<\/table>/, '</table>');
+        }
+
+        function copyHTML() {
+            const content = document.getElementById("html-output").innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                alert("HTML Copy hoh gya guys!!!!!!!");
+            }).catch(() => {
+                alert(" Copy failed. Please try manually.");
+            });
+        }
+    </script>
+
+</body>
+
+</html>
